@@ -2,12 +2,14 @@
 
 from copy import deepcopy
 from parsing import load_problem, load_solution
+from collections import deque
 
 
 class Node(object):
     def __init__(self, weight, neighbors):
         self.weight = weight
-        self.successors = neighbors  # lista trójek (numer cyklu, zadanie, operacja), numer cyklu 0, jeśli ten sam; 1 jeśli następny
+        self.successors = neighbors  # lista trójek (numer cyklu, zadanie, operacja), 
+                                     # numer cyklu 0, jeśli ten sam; 1 jeśli następny
         self.indegree = 0
 
 
@@ -20,7 +22,7 @@ class Graph(object):
         self.subgraph = {}
         self.create_subgraph()
         self.graph = deepcopy(self.subgraph)
-        for cycle_idx in xrange(m + 1):
+        for cycle_idx in xrange(m):
             for k, v in self.subgraph.iteritems():
                 self.graph[(cycle_idx + 1,) + k[1:]] = deepcopy(v)
 
@@ -51,8 +53,21 @@ class Graph(object):
                     neighbors.append((0, task, operation + 1))
                 self.subgraph[(0, task, operation)] = Node(weight, neighbors)
 
-    def topological_sort(self, *args, **kwargs):
-        raise NotImplementedError
+    def topological_sort(self):
+        indegs_cp = {v : self.graph[v].indegree for v in self.vertices}
+        Q = deque([v for v,deg in indegs_cp.items() if deg == 0])
+        result = []
+        while Q:
+            v = Q.pop()
+            result.append(v)
+            for u in self.graph[v].successors:
+                ##
+                u = (v[0]+u[0],) + u[1:]
+                ##
+                if indegs_cp[u] == 1:
+                    Q.appendleft(u)
+                indegs_cp[u] -= 1
+        return result
 
 if __name__ == "__main__":
     n, m, problem = load_problem("instances/Barnes_mt10c1.fjs")
