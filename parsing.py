@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 # n - liczba zadań, m - liczba maszyn
 
 def load_problem(filename):
