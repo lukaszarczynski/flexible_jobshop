@@ -18,7 +18,7 @@ def load_problem(filename):
                 
                 while idx < len(numbers):
                     k = numbers[idx]
-                    ops = {tuple(numbers[idx+2*i+1:idx+2*i+3]) for i in xrange(k)}
+                    ops = {numbers[idx+2*i+1] : numbers[idx+2*i+2] for i in xrange(k)}
                     problem[-1].append(ops)
                     idx += 2*k + 1
                 

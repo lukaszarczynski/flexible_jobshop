@@ -40,12 +40,11 @@ class Graph(object):
         for machine_idx, machine in enumerate(self.solution):
             for pair_idx, (task, operation) in enumerate(machine):
                 weights = self.problem[task - 1][operation - 1]  # indeksować od 0?
-                weight = None
-                for (_machine, _weight) in weights:  # słownik {maszyna: waga} zamiast zbioru par?
-                    if machine_idx + 1 == _machine:
-                        weight = _weight
-                if weight is None:
+                        
+                if machine_idx + 1 not in weights:
                     raise Exception("Incorrect solution")
+                weight = weights[machine_idx + 1]
+                
                 neighbors = []
                 if len(machine) > pair_idx + 1:
                     neighbors.append((0,) + machine[pair_idx + 1])
