@@ -10,6 +10,7 @@ class Node(object):
         self.weight = weight
         self.successors = neighbors  # lista trójek (numer cyklu, zadanie, operacja), 
                                      # numer cyklu 0, jeśli ten sam; 1 jeśli następny
+        self.predecessors = []
         self.indegree = 0
 
 
@@ -25,14 +26,19 @@ class Graph(object):
         for cycle_idx in xrange(m):
             for k, v in self.subgraph.iteritems():
                 self.graph[(cycle_idx + 1,) + k[1:]] = deepcopy(v)
+                successors = []
+                for successor in v.successors:
+                    successors.append((cycle_idx + 2,) + successor[1:])
+                v.successors = successors
 
         for machine in solution:
             for cycle_idx in xrange(m):
-                self.graph[(cycle_idx,) + machine[-1]].successors.append((1,) + machine[0])
+                self.graph[(cycle_idx,) + machine[-1]].successors.append((cycle_idx + 1,) + machine[0])
 
         for k, v in self.graph.iteritems():
             for successor in v.successors:
-                self.graph[(k[0]+successor[0],) + successor[1:]].indegree += 1
+                self.graph[successor].indegree += 1
+                self.graph[successor].predecessors.append(k)
 
         self.vertices = self.graph.keys()
 
