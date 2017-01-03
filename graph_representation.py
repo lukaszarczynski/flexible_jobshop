@@ -25,7 +25,7 @@ class Graph(object):
         self.topological_order = None
         for cycle_idx in xrange(m):
             for k, v in self.subgraph.iteritems():
-                new_v = self.graph[(cycle_idx + 1,) + k[1:]]
+                new_v = (cycle_idx + 1,) + k[1:]
                 self.graph[new_v] = deepcopy(v)
                 successors = []
                 for successor in v.successors:
@@ -62,7 +62,6 @@ class Graph(object):
     def topological_sort(self):
         indegs_cp = {v : self.graph[v].indegree for v in self.vertices}
         Q = deque([v for v,deg in indegs_cp.items() if deg == 0])
-        print Q
         result = []
         while Q:
             v = Q.pop()
@@ -83,9 +82,9 @@ class Graph(object):
         if v1 == v2:
             return temp_longest[v1]
 
-        for v in self.topologica_order[self.topologica_order.index(v1)+1:]:
+        for v in self.topological_order[self.topological_order.index(v1)+1:]:
             if (not justH1) or v[0] == 0:
-                preds = [p for p in self.graph[v].predecessors if v in temp_longest]
+                preds = [p for p in self.graph[v].predecessors if p in temp_longest]
                 if preds:
                     best_pred = max(preds, key=lambda p: temp_longest[p] + self.graph[p].weight)
                     temp_longest[v] = temp_longest[best_pred] + self.graph[best_pred].weight
