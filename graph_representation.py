@@ -25,11 +25,12 @@ class Graph(object):
         self.topological_order = None
         for cycle_idx in xrange(m):
             for k, v in self.subgraph.iteritems():
-                self.graph[(cycle_idx + 1,) + k[1:]] = deepcopy(v)
+                new_v = self.graph[(cycle_idx + 1,) + k[1:]]
+                self.graph[new_v] = deepcopy(v)
                 successors = []
                 for successor in v.successors:
-                    successors.append((cycle_idx + 2,) + successor[1:])
-                v.successors = successors
+                    successors.append((cycle_idx + 1,) + successor[1:])
+                self.graph[new_v].successors = successors
 
         for machine in solution:
             for cycle_idx in xrange(m):
