@@ -87,7 +87,7 @@ class Graph(object):
                 preds = [p for p in self.graph[v].predecessors if p in temp_longest]
                 if preds:
                     best_pred = max(preds, key=lambda p: temp_longest[p] + self.graph[p].weight)
-                    temp_longest[v] = temp_longest[best_pred] + self.graph[best_pred].weight
+                    temp_longest[v] = temp_longest[best_pred] + self.graph[v].weight
                 if v == v2:
                     if v2 in temp_longest:
                         return temp_longest[v2]
