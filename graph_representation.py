@@ -58,6 +58,10 @@ class Graph(object):
                 if len(self.problem[task - 1]) > operation:
                     neighbors.append((0, task, operation + 1))
                 self.subgraph[(0, task, operation)] = Node(weight, neighbors)
+                
+    # format ruchu taki jak w lower_bound
+    def make_a_move(self, (i,k,s)):
+        pass
 
     def topological_sort(self):
         indegs_cp = {v : self.graph[v].indegree for v in self.vertices}
@@ -130,7 +134,7 @@ class Graph(object):
         moves = []
         
         for i in [(x[0],) + op for x in enumerate(self.solution) for op in x[1]]:
-            for k in xrange(self.m):
+            for k in [x-1 for x in self.problem[i[1]-1][i[2]-1].keys()]:
                 for s in xrange(len(self.solution[k])+1) if k != i[0] else xrange(len(self.solution[k])):
                     move = (i,k,s)
                     if self.valid_move(move):
@@ -141,7 +145,10 @@ class Graph(object):
     # op - zabierana operacja, para (nr_maszyny, nr_operacji)
     # pos - pozycja do wsadzenia op na maszynę m_to
     # tutaj numery maszyn idą od 0
-    def lower_bound(self, m_from, op, m_to, pos):
+    def lower_bound(self, (i, m_to, pos)):
+        m_from = i[0]
+        op = i[1:]
+        
         def alpha(k,i):
             assert i >= 0
             if k != m_from or self.solution[k].index(op) > i:
