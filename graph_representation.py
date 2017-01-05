@@ -23,6 +23,7 @@ class Graph(object):
         self.create_subgraph()
         self.graph = deepcopy(self.subgraph)
         self.topological_order = None
+        self.topological_order_dic = None
         for cycle_idx in xrange(m):
             for k, v in self.subgraph.iteritems():
                 new_v = (cycle_idx + 1,) + k[1:]
@@ -72,6 +73,7 @@ class Graph(object):
                 indegs_cp[u] -= 1
         
         self.topological_order = result
+        self.topological_order_dic = {k : v for (v,k) in enumerate(self.topological_order)}
     
     def longest_path_length(self, v1, v2, justH1=False):
         assert self.topological_order is not None
@@ -92,10 +94,102 @@ class Graph(object):
                     if v2 in temp_longest:
                         return temp_longest[v2]
                     return None
+    
+    # ruch jest zły wtw. gdy któraś z tych ścieżek istnieje w starym grafie:
+    # następnik technologiczny -> nowy poprzednik maszynowy (path1)
+    # nowy następnik maszynowy -> poprzednik technologiczny (path2)
+    def valid_move(self, (i,k,s)):
+        next_tech = (0, i[1], i[2]+1)
+        prev_tech = (0, i[1], i[2]-1)
+        old_i_machine_idx = self.solution[i[0]].index(i[1:])
+        
+        if k != i[0]:
+            new_next_m = (0,) + self.solution[k][s] if s < len(self.solution[k]) else None
+        else:
+            if s < old_i_machine_idx:
+                new_next_m = (0,) + self.solution[k][s]
+            elif s < len(self.solution[k])-1:
+                new_next_m = (0,) + self.solution[k][s+1]
+            else:
+                new_next_m = None
+                
+        if k != i[0]:
+            new_prev_m = (0,) + self.solution[k][s-1] if s > 0 else None
+        else:
+            if s > old_i_machine_idx:
+                new_prev_m = (0,) + self.solution[k][s]
+            elif s > 0:
+                new_prev_m = (0,) + self.solution[k][s-1]
+            else:
+                new_prev_m = None
+        
+        path1_exists = self.longest_path_length(next_tech, new_prev_m, justH1=True) is not None
+        path2_exists = self.longest_path_length(new_next_m, prev_tech, justH1=True) is not None
+        
+        return (not path1_exists) and (not path2_exists)
 
-if __name__ == "__main__":
-    n, m, problem = load_problem("instances/Barnes_mt10c1.fjs")
+    def generate_neighborhood(self):
+        moves = []
+        
+        for i in [(x[0],) + op for x in enumerate(self.solution) for op in x[1]]:
+            for k in xrange(self.m):
+                for s in xrange(len(self.solution[k])+1) if k != i[0] else xrange(len(self.solution[k])):
+                    move = (i,k,s)
+                    if self.valid_move(move):
+                        moves.append(move)
+        return moves
+    
+    # m_from, m_to - skąd zabieramy, gdzie wsadzamy
+    # op - zabierana operacja, para (nr_maszyny, nr_operacji)
+    # pos - pozycja do wsadzenia op na maszynę m_to
+    # tutaj numery maszyn idą od 0
+    def lower_bound(self, m_from, op, m_to, pos):
+        def alpha(k,i):
+            assert i >= 0
+            if k != m_from or self.solution[k].index(op) > i:
+                return self.solution[k][i]
+            #print k, i
+            return self.solution[k][i+1]
 
-    solution = load_solution("solutions/Barnes_mt10c1.txt")
+        # jeśli longest_path nie istnieje, to powinien zwrócić None
+        # te drogi poniżej są zawarte w H1 (pierwszej składowej G), więc
+        # można by je liczyć trochę szybciej (tylko w H1)
 
-    graph = Graph(n, m, problem, solution)
+        def R(k,opr):
+            return self.longest_path_length((0,) + alpha(k,0), (0,) + opr, justH1=True)
+
+        def Q(k,opr):
+            last_op_k_idx = len(self.solution[k]) - 1
+            if k == m_from:
+                last_op_k_idx -= 1
+            return self.longest_path_length((0,) + opr, (0,) + alpha(k, last_op_k_idx), justH1=True)
+
+        def LB(l):
+            op_old_weight = self.graph[(0,) + op].weight
+            op_new_weight = self.problem[op[0]-1][op[1]-1][m_to+1]
+
+            R1 = lambda: R(l, alpha(m_to, pos-1))
+            def R2():
+                r = R(l, op)
+                return r - op_old_weight if r is not None else None
+            Q1 = lambda: Q(l, alpha(m_to, pos))
+            def Q2():
+                q = Q(l, op)
+                return q - op_old_weight if q is not None else None 
+
+            # 0 w maxach po to, żeby mieć jakąś liczbę, gdy drogi nie istnieją
+            if pos == 0:
+                return max(R2(), 0) + max(Q1(), Q2(), 0) + op_new_weight
+
+            len_m_to = len(self.solution[m_to])
+            if m_to == m_from:
+                len_m_to -= 1
+            if pos == len_m_to:
+                return max(R1(), R2(), 0) + max(Q2(), 0) + op_new_weight
+
+            maxR = max(R1(), R2(), 0)
+            maxQ = max(Q1(), Q2(), 0)
+
+            return maxR + maxQ + op_new_weight # a może tu ma być op_new_weight?
+        
+        return max([LB(l) for l in xrange(len(self.solution))])
