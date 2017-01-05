@@ -23,7 +23,6 @@ class Graph(object):
         self.create_subgraph()
         self.graph = deepcopy(self.subgraph)
         self.topological_order = None
-        self.topological_order_dic = None
         for cycle_idx in xrange(m):
             for k, v in self.subgraph.iteritems():
                 new_v = (cycle_idx + 1,) + k[1:]
@@ -73,7 +72,6 @@ class Graph(object):
                 indegs_cp[u] -= 1
         
         self.topological_order = result
-        self.topological_order_dic = {k : v for (v,k) in enumerate(self.topological_order)}
     
     def longest_path_length(self, v1, v2, justH1=False):
         assert self.topological_order is not None
