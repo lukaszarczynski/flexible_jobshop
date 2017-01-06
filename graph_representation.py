@@ -6,11 +6,14 @@ from collections import deque
 
 
 class Node(object):
-    def __init__(self, weight, neighbors):
+    def __init__(self, weight):
         self.weight = weight
-        self.successors = neighbors  # lista trójek (numer cyklu, zadanie, operacja)
+        self.successors = []  # lista trójek (numer cyklu, zadanie, operacja)
         self.predecessors = []
-        self.indegree = 0
+        self.next_tech = None
+        self.prev_tech = None
+        self.next_mach = None
+        self.prev_mach = None
 
 
 class Graph(object):
@@ -23,25 +26,37 @@ class Graph(object):
         self.create_subgraph()
         self.graph = deepcopy(self.subgraph)
         self.topological_order = None
+        
         for cycle_idx in xrange(m):
             for k, v in self.subgraph.iteritems():
-                new_v = (cycle_idx + 1,) + k[1:]
-                self.graph[new_v] = deepcopy(v)
-                successors = []
-                for successor in v.successors:
-                    successors.append((cycle_idx + 1,) + successor[1:])
-                self.graph[new_v].successors = successors
+                new_v_name = (cycle_idx + 1,) + k[1:]
+                self.graph[new_v_name] = deepcopy(v)
+                new_v = self.graph[new_v_name]
+                if new_v.next_tech is not None:
+                    new_v.next_tech = (cycle_idx + 1,) + new_v.next_tech[1:]
+                if new_v.next_mach is not None:
+                    new_v.next_mach = (cycle_idx + 1,) + new_v.next_mach[1:]
 
-        for machine in solution:
+        for machine in self.solution:
             for cycle_idx in xrange(m):
-                self.graph[(cycle_idx,) + machine[-1]].successors.append((cycle_idx + 1,) + machine[0])
+                self.graph[(cycle_idx,) + machine[-1]].next_mach = ((cycle_idx + 1,) + machine[0])
 
-        for k, v in self.graph.iteritems():
-            for successor in v.successors:
-                self.graph[successor].indegree += 1
-                self.graph[successor].predecessors.append(k)
+        for k, v in self.graph.iteritems():            
+            if v.next_tech is not None:
+                self.graph[v.next_tech].prev_tech = k
+            if v.next_mach is not None:
+                self.graph[v.next_mach].prev_mach = k
 
         self.vertices = self.graph.keys()
+        self.recalculate_succs_and_preds(self.vertices)
+        
+    
+    def recalculate_succs_and_preds(self, vertices):
+        for v_name in vertices:
+            v = self.graph[v_name]
+            v.successors = {u for u in [v.next_tech, v.next_mach] if u is not None}
+            v.predecessors = {u for u in [v.prev_tech, v.prev_mach] if u is not None}
+        
 
     def create_subgraph(self):
         for machine_idx, machine in enumerate(self.solution):
@@ -52,19 +67,55 @@ class Graph(object):
                     raise Exception("Incorrect solution")
                 weight = weights[machine_idx + 1]
                 
-                neighbors = []
+                self.subgraph[(0, task, operation)] = Node(weight)
+                v = self.subgraph[(0, task, operation)]
+                
                 if len(machine) > pair_idx + 1:
-                    neighbors.append((0,) + machine[pair_idx + 1])
+                    v.next_mach = ((0,) + machine[pair_idx + 1])
                 if len(self.problem[task - 1]) > operation:
-                    neighbors.append((0, task, operation + 1))
-                self.subgraph[(0, task, operation)] = Node(weight, neighbors)
+                    v.next_tech = ((0, task, operation + 1))
+                
                 
     # format ruchu taki jak w lower_bound
-    def make_a_move(self, (i,k,s)):
-        pass
+    # nie sprawdza czy ruch jest poprawny! odpalać tylko na ruchach
+    # wygenerowanych przez generate_neighborhood
+    def make_a_move(self, (i, m_to, pos)):
+        m_from = i[0]
+        op = i[1:]
+        
+        for cycle_idx in xrange(m+1):
+            v_name = (cycle_idx,) + i[1:]
+            v = self.graph[v_name]
+            old_v_next_mach = v.next_mach
+            old_v_prev_mach = v.prev_mach
+            
+            if v.prev_mach is not None:
+                self.graph[v.prev_mach].next_mach = v.next_mach
+            if v.next_mach is not None:
+                self.graph[v.next_mach].prev_mach = v.prev_mach
+                
+            v.weight = self.problem[op[0]-1][op[1]-1][m_to+1]
+            
+            _, new_v_next_mach, _, new_v_prev_mach = self.new_succs_preds((i, m_to, pos), cycle=cycle_idx,
+                                                                          only_one_cycle=False)
+            
+            if new_v_next_mach is not None:
+                self.graph[new_v_next_mach].prev_mach = v_name
+                v.next_mach = new_v_next_mach
+            if new_v_prev_mach is not None:
+                self.graph[new_v_prev_mach].next_mach = v_name
+                v.prev_mach = new_v_prev_mach
+                
+            to_recalc = [u for u in [v_name, new_v_next_mach, new_v_prev_mach,
+                                     old_v_next_mach, old_v_prev_mach] if u is not None]
+            self.recalculate_succs_and_preds(to_recalc)
+            
+        self.solution[m_from].remove(op)
+        self.solution[m_to].insert(pos, op)
+
 
     def topological_sort(self):
-        indegs_cp = {v : self.graph[v].indegree for v in self.vertices}
+        indegs_cp = {v : len(self.graph[v].predecessors) for v in self.vertices}
         Q = deque([v for v,deg in indegs_cp.items() if deg == 0])
         result = []
         while Q:
@@ -76,6 +127,7 @@ class Graph(object):
                 indegs_cp[u] -= 1
         
         self.topological_order = result
+        
     
     def longest_path_length(self, v1, v2, justH1=False):
         assert self.topological_order is not None
@@ -95,51 +147,78 @@ class Graph(object):
                 if v == v2:
                     if v2 in temp_longest:
                         return temp_longest[v2]
-                    return None
-    
-    # ruch jest zły wtw. gdy któraś z tych ścieżek istnieje w starym grafie:
-    # następnik technologiczny -> nowy poprzednik maszynowy (path1)
-    # nowy następnik maszynowy -> poprzednik technologiczny (path2)
-    def valid_move(self, (i,k,s)):
-        next_tech = (0, i[1], i[2]+1)
-        prev_tech = (0, i[1], i[2]-1)
+                    return None     
+                
+                
+    def new_succs_preds(self, (i,k,s), cycle=0, only_one_cycle=True):
+        next_tech = (cycle, i[1], i[2]+1) if i[2] < len(self.problem[i[1]-1]) else None
+        prev_tech = (cycle, i[1], i[2]-1) if i[2] > 1 else None
         old_i_machine_idx = self.solution[i[0]].index(i[1:])
-        
+
         if k != i[0]:
-            new_next_m = (0,) + self.solution[k][s] if s < len(self.solution[k]) else None
+            if s < len(self.solution[k]):
+                new_next_m = (cycle,) + self.solution[k][s]
+            else:
+                if only_one_cycle or cycle == self.m:
+                    new_next_m = None
+                else:
+                    new_next_m = (cycle+1,) + self.solution[k][0]
         else:
             if s < old_i_machine_idx:
-                new_next_m = (0,) + self.solution[k][s]
+                new_next_m = (cycle,) + self.solution[k][s]
             elif s < len(self.solution[k])-1:
-                new_next_m = (0,) + self.solution[k][s+1]
+                new_next_m = (cycle,) + self.solution[k][s+1]
             else:
-                new_next_m = None
-                
+                if only_one_cycle or cycle == self.m:
+                    new_next_m = None
+                else:
+                    new_next_m = (cycle+1,) + self.solution[k][0]
+                    
+
         if k != i[0]:
-            new_prev_m = (0,) + self.solution[k][s-1] if s > 0 else None
+            if s > 0:
+                new_prev_m = (cycle,) + self.solution[k][s-1]
+            else:
+                if only_one_cycle or cycle == 0:
+                    new_prev_m = None
+                else:
+                    new_prev_m = (cycle-1,) + self.solution[k][-1]
         else:
             if s > old_i_machine_idx:
-                new_prev_m = (0,) + self.solution[k][s]
+                new_prev_m = (cycle,) + self.solution[k][s]
             elif s > 0:
-                new_prev_m = (0,) + self.solution[k][s-1]
+                new_prev_m = (cycle,) + self.solution[k][s-1]
             else:
-                new_prev_m = None
-        
-        path1_exists = self.longest_path_length(next_tech, new_prev_m, justH1=True) is not None
-        path2_exists = self.longest_path_length(new_next_m, prev_tech, justH1=True) is not None
-        
-        return (not path1_exists) and (not path2_exists)
+                if only_one_cycle or cycle == 0:
+                    new_prev_m = None
+                else:
+                    new_prev_m = (cycle-1,) + self.solution[k][-1]
+                
+        return next_tech, new_next_m, prev_tech, new_prev_m
+    
 
     def generate_neighborhood(self):
+        # ruch jest zły wtw. gdy któraś z tych ścieżek istnieje w starym grafie:
+        # następnik technologiczny -> nowy poprzednik maszynowy (path1)
+        # nowy następnik maszynowy -> poprzednik technologiczny (path2)
+        def valid_move(move):
+            next_tech, new_next_m, prev_tech, new_prev_m = self.new_succs_preds(move)
+
+            path1_exists = self.longest_path_length(next_tech, new_prev_m, justH1=True) is not None
+            path2_exists = self.longest_path_length(new_next_m, prev_tech, justH1=True) is not None
+
+            return (not path1_exists) and (not path2_exists)
+        
         moves = []
         
         for i in [(x[0],) + op for x in enumerate(self.solution) for op in x[1]]:
             for k in [x-1 for x in self.problem[i[1]-1][i[2]-1].keys()]:
                 for s in xrange(len(self.solution[k])+1) if k != i[0] else xrange(len(self.solution[k])):
                     move = (i,k,s)
-                    if self.valid_move(move):
+                    if valid_move(move):
                         moves.append(move)
         return moves
+    
     
     # m_from, m_to - skąd zabieramy, gdzie wsadzamy
     # op - zabierana operacja, para (nr_maszyny, nr_operacji)
