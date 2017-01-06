@@ -22,6 +22,4 @@ def search_with_lower_bound(n, m, problem, initial_solution, num_iter):
         G.topological_sort()
         cost_time += time.time()-t0
         
-        print best_move
-        
     return G.solution, cost_time
