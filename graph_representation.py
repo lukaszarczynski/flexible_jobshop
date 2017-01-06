@@ -83,7 +83,7 @@ class Graph(object):
         m_from = i[0]
         op = i[1:]
         
-        for cycle_idx in xrange(m+1):
+        for cycle_idx in xrange(self.m+1):
             v_name = (cycle_idx,) + i[1:]
             v = self.graph[v_name]
             old_v_next_mach = v.next_mach
@@ -102,9 +102,14 @@ class Graph(object):
             if new_v_next_mach is not None:
                 self.graph[new_v_next_mach].prev_mach = v_name
                 v.next_mach = new_v_next_mach
+            else:
+                v.next_mach = None
+                
             if new_v_prev_mach is not None:
                 self.graph[new_v_prev_mach].next_mach = v_name
                 v.prev_mach = new_v_prev_mach
+            else:
+                v.prev_mach = None
                 
             to_recalc = [u for u in [v_name, new_v_next_mach, new_v_prev_mach,
                                      old_v_next_mach, old_v_prev_mach] if u is not None]
