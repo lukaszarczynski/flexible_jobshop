@@ -350,9 +350,16 @@ if __name__ == "__main__":
 
     optimal_time = graph.min_cycle_time()
 
-    initial_solution, initial_cycle_time = graph.add_noise_to_solution(5)
+    while True:
+        graph.add_noise_to_solution(num_iter=5)
+        initial_cycle_time = graph.min_cycle_time()
+        print "Initial solution is ", float(initial_cycle_time) / optimal_time, " times worse than optimal/best known solution."
 
-    result, execution_time, cycle_time = graph.search_for_solution(10, cost_function=graph.lower_bound)
+    initial_cycle_time = graph.min_cycle_time()
+
+    execution_time = graph.search_for_solution(10, cost_function=graph.lower_bound)
+
+    cycle_time = graph.min_cycle_time()
 
 
     print "Solution found is ", float(cycle_time) / optimal_time, " times worse than optimal/best known solution."
