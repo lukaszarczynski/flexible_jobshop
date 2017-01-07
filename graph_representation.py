@@ -257,6 +257,53 @@ class Graph(object):
 
         return critical_path_len
     
+    def lower_bound_experimental(self, move):
+        op = move[0][1:]
+        v_name = (0,) + op
+        
+        op_idx = self.topological_order.index(v_name)
+        del self.topological_order[op_idx]
+        
+        rev_move = self.find_opposite_move(move)
+        self.make_a_move(move)
+        
+        v = self.graph[v_name]
+        
+        def LB(l):
+            if self.solution[l][0] == op:
+                R1 = None
+                R2 = None
+            else:
+                R1 = self.longest_path_length((0,) + self.solution[l][0], v.prev_mach, justH1=True)
+                R2 = self.longest_path_length((0,) + self.solution[l][0], v.prev_tech, justH1=True)
+
+            if self.solution[l][-1] == op:
+                Q1 = None
+                Q2 = None
+            else:
+                Q1 = self.longest_path_length(v.next_mach, (0,) + self.solution[l][-1], justH1=True)
+                Q2 = self.longest_path_length(v.next_tech, (0,) + self.solution[l][-1], justH1=True)
+            
+            maxR = max(R1, R2, 0)
+            maxQ = max(Q1, Q2, 0)
+            
+            longest_with_op = maxR + maxQ + v.weight
+            
+            if self.solution[l][0] == op or self.solution[l][-1] == op:
+                longest_without_op = None
+            else:
+                longest_without_op = self.longest_path_length((0,) + self.solution[l][0], 
+                                                              (0,) + self.solution[l][-1], justH1=True)
+
+            return max(longest_without_op, longest_with_op)
+
+        result = max([LB(l) for l in xrange(self.m)])
+        
+        self.make_a_move(rev_move)
+        self.topological_order.insert(op_idx, v_name)
+        
+        return result
+    
     # tutaj numery maszyn idą od 0
     def lower_bound(self, move):
         op = move[0][1:]
@@ -301,46 +348,52 @@ class Graph(object):
         cost_time = 0.
     
         print "searching..."
-        past_solutions = [deepcopy(self.solution)]
-        past_moves = []
+        #past_solutions = [deepcopy(self.solution)]
+        #past_moves = []
         for i in xrange(num_iter):
             print i
             neighborhood = self.generate_neighborhood()
-            best_move = None
-            best_cost = float("inf")
-            best_sol = None
+            #best_move = None
+            #best_cost = float("inf")
+            #best_sol = None
 
             t0 = time.time()
-            #best_move = min(neighborhood, key=cost_function)
-            for move in neighborhood:
-                if not move in past_moves:
-                    new_sol = deepcopy(self.solution)
-                    new_sol[move[0][0]].remove(move[0][1:])
-                    new_sol[move[1]].insert(move[2], move[0][1:])
-                    if new_sol not in past_solutions:
-                        cost = cost_function(move)
-                        if cost < best_cost:
-                            best_cost = cost
-                            best_move = move
-                            best_sol = new_sol
+            best_move = min(neighborhood, key=cost_function)
+            #for move in neighborhood:
+            #    if not move in past_moves:
+            #       new_sol = deepcopy(self.solution)
+            #        new_sol[move[0][0]].remove(move[0][1:])
+            #        new_sol[move[1]].insert(move[2], move[0][1:])
+            #        if new_sol not in past_solutions:
+            #            cost = cost_function(move)
+            #            if cost < best_cost:
+            #                best_cost = cost
+            #                best_move = move
+            #                best_sol = new_sol
             cost_time += time.time() - t0
             
-            past_solutions.append(best_sol)
-            past_moves.append(best_move)
-            past_moves.append(self.find_opposite_move(best_move))
+            #past_solutions.append(best_sol)
+            #past_moves.append(best_move)
+            #past_moves.append(self.find_opposite_move(best_move))
             
             print best_move
-            print self.find_opposite_move(best_move)
+            rev_move = self.find_opposite_move(best_move)
+            print rev_move
 
             self.make_a_move(best_move)
             self.topological_sort()
+            if rev_move == best_move:
+                break
             
         print "found"
 
-        return cost_time, past_solutions
+        return cost_time#, past_solutions
 
     def add_noise_to_solution(self, num_iter):
-        self.search_for_solution(num_iter, lambda _: random())
+        for i in xrange(num_iter):
+            random_move = choice(self.generate_neighborhood())
+            self.make_a_move(random_move)
+            self.topological_sort()
         
     
 def get_random_starting_solution(n, m, problem):
