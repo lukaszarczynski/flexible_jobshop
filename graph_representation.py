@@ -150,7 +150,7 @@ class Graph(object):
             if (not justH1) or v[0] == 0:
                 preds = [p for p in self.graph[v].predecessors if p in temp_longest]
                 if preds:
-                    best_pred = max(preds, key=lambda p: temp_longest[p] + self.graph[p].weight)
+                    best_pred = max(preds, key=lambda p: temp_longest[p])
                     temp_longest[v] = temp_longest[best_pred] + self.graph[v].weight
                 if v == v2:
                     if v2 in temp_longest:
@@ -246,6 +246,7 @@ class Graph(object):
                 if longest_path is None:
                     path_len = float("-inf")
                 else:
+                    longest_path -= self.graph[(cycle_idx,) + vertex].weight
                     path_len = longest_path / float(cycle_idx)
                 if path_len > critical_path_len:
                     critical_path_len = path_len
@@ -322,22 +323,43 @@ class Graph(object):
         cost_time = 0.
     
         print "searching..."
+        past_solutions = [deepcopy(self.solution)]
+        past_moves = []
         for i in xrange(num_iter):
             print i
             neighborhood = self.generate_neighborhood()
+            best_move = None
+            best_cost = float("inf")
+            best_sol = None
 
             t0 = time.time()
-            best_move = min(neighborhood, key=cost_function)
+            #best_move = min(neighborhood, key=cost_function)
+            for move in neighborhood:
+                if not move in past_moves:
+                    new_sol = deepcopy(self.solution)
+                    new_sol[move[0][0]].remove(move[0][1:])
+                    new_sol[move[1]].insert(move[2], move[0][1:])
+                    if new_sol not in past_solutions:
+                        cost = cost_function(move)
+                        if cost < best_cost:
+                            best_cost = cost
+                            best_move = move
+                            best_sol = new_sol
             cost_time += time.time() - t0
+            
+            past_solutions.append(best_sol)
+            past_moves.append(best_move)
+            past_moves.append(self.find_opposite_move(best_move))
             
             print best_move
             print self.find_opposite_move(best_move)
 
             self.make_a_move(best_move)
             self.topological_sort()
+            
         print "found"
 
-        return cost_time
+        return cost_time, past_solutions
 
     def add_noise_to_solution(self, num_iter):
         self.search_for_solution(num_iter, lambda _: random())
