@@ -111,8 +111,6 @@ class Graph(object):
                 v.prev_mach = new_v_prev_mach
             else:
                 v.prev_mach = None
-                
-            print v_name, new_v_next_mach, new_v_prev_mach, old_v_next_mach, old_v_prev_mach
 
             to_recalc = [u for u in [v_name, new_v_next_mach, new_v_prev_mach,
                                      old_v_next_mach, old_v_prev_mach] if u is not None]
@@ -329,11 +327,8 @@ class Graph(object):
             best_move = min(neighborhood, key=cost_function)
             cost_time += time.time() - t0
 
-            print "making a move..."
             self.make_a_move(best_move)
-            print best_move
             self.topological_sort()
-            print len(self.topological_order)
 
         return cost_time
     
