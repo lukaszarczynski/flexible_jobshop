@@ -117,12 +117,9 @@ class Graph(object):
         self.solution[m_from].remove(op)
         self.solution[m_to].insert(pos, op)
 
-    def find_opposite_move(self, (operation, machine, position)):
-        operation_position = None
-        for index, row in enumerate(self.solution):
-            if operation[1:] in row:
-                operation_position = (index, row.index(operation[1:]))
-        return (operation,) + operation_position
+    def find_opposite_move(self, (m_operation, machine, position)):
+        new_m_operation = (machine,) + m_operation[1:]
+        return (new_m_operation, m_operation[0], self.solution[m_operation[0]].index(m_operation[1:]))
 
     def topological_sort(self):
         indegs_cp = {v: len(self.graph[v].predecessors) for v in self.vertices}
