@@ -73,7 +73,7 @@ class Graph(object):
                 if len(machine) > pair_idx + 1:
                     v.next_mach = ((0,) + machine[pair_idx + 1])
                 if len(self.problem[task - 1]) > operation:
-                    v.next_tech = ((0, task, operation + 1))
+                    v.next_tech = (0, task, operation + 1)
 
     # format ruchu taki jak w lower_bound
     # nie sprawdza czy ruch jest poprawny! odpalać tylko na ruchach
@@ -235,7 +235,7 @@ class Graph(object):
 
         critical_path_len = 0
 
-        for machine in solution:
+        for machine in self.solution:
             vertex = machine[0]
             for cycle_idx in xrange(1, self.m):
                 path_len = self.longest_path_length((0,) + vertex, (cycle_idx,) + vertex) / cycle_idx
