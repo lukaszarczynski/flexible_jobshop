@@ -237,7 +237,11 @@ class Graph(object):
         for machine in self.solution:
             vertex = machine[0]
             for cycle_idx in xrange(1, self.m):
-                path_len = self.longest_path_length((0,) + vertex, (cycle_idx,) + vertex) / cycle_idx
+                longest_path = self.longest_path_length((0,) + vertex, (cycle_idx,) + vertex)
+                if longest_path is None:
+                    path_len = float("-inf")
+                else:
+                    path_len = longest_path / cycle_idx
                 if path_len > critical_path_len:
                     critical_path_len = path_len
 
@@ -342,26 +346,42 @@ class Graph(object):
 
 
 if __name__ == "__main__":
-    n, m, problem = load_problem("instances/Hurink_edata_car2.fjs")
+    n, m, problem = load_problem("instances/Hurink_edata_abz8.fjs")
 
-    solution = load_solution("solutions/Hurink_edata_car2.txt")
+    solution = load_solution("solutions/Hurink_edata_abz8.txt")
 
     graph = Graph(n, m, problem, solution)
 
     optimal_time = graph.min_cycle_time()
+    print "optimal_time =", optimal_time
 
-    while True:
-        graph.add_noise_to_solution(num_iter=5)
-        initial_cycle_time = graph.min_cycle_time()
-        print "Initial solution is ", float(initial_cycle_time) / optimal_time, " times worse than optimal/best known solution."
+    neighborhood = graph.generate_neighborhood()
+    move = neighborhood[0]
+    opposite_move = graph.find_opposite_move(move)
+    graph.make_a_move(move)
+
+    lower_bound = graph.lower_bound(opposite_move)
+    print "lower_bound =", lower_bound
+
+    graph.add_noise_to_solution(num_iter=5)
+    initial_cycle_time = graph.min_cycle_time()
+    print "initial_cycle_time =", initial_cycle_time
+    print "Initial solution is ", float(initial_cycle_time) / optimal_time, " times worse than optimal/best known solution."
 
     initial_cycle_time = graph.min_cycle_time()
 
-    execution_time = graph.search_for_solution(10, cost_function=graph.lower_bound)
+    execution_time_lb = graph.search_for_solution(10, cost_function=graph.lower_bound)
 
-    cycle_time = graph.min_cycle_time()
+    cycle_time_lb = graph.min_cycle_time()
+    print "cycle_time_lb =", cycle_time_lb
 
+    print "Solution found with lower bound is ", float(cycle_time_lb) / optimal_time, " times worse than optimal/best known solution."
+    print "Initial solution was ", float(initial_cycle_time) / cycle_time_lb, " times worse than solution found with lower bound."
 
-    print "Solution found is ", float(cycle_time) / optimal_time, " times worse than optimal/best known solution."
-    print "Initial solution was ", float(initial_cycle_time) / cycle_time, " times worse than found solution."
-    print optimal_time, initial_cycle_time, cycle_time
+    execution_time_lb = graph.search_for_solution(10, cost_function=graph.min_cycle_time)
+
+    cycle_time_prec = graph.min_cycle_time()
+    print "cycle_time_prec =", cycle_time_prec
+
+    print "Solution found is ", float(cycle_time_prec) / optimal_time, " times worse than optimal/best known solution."
+    print "Initial solution was ", float(initial_cycle_time) / cycle_time_prec, " times worse than found solution."
