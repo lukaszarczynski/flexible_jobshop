@@ -1,7 +1,9 @@
 # -*- coding: UTF-8 -*-
-import sys, traceback
 from copy import deepcopy
 from collections import deque
+from random import random
+
+import time
 
 from parsing import load_problem, load_solution
 
@@ -335,7 +337,7 @@ class Graph(object):
                 rand_machine = random(self.problem[t][op_num].keys())
                 self.solution[rand_machine].append((t+1, op_num+1))
 
-    def add_noise_to_solution(num_iter):
+    def add_noise_to_solution(self, num_iter):
         self.search_for_solution(num_iter, lambda _: random())
 
 
@@ -346,27 +348,13 @@ if __name__ == "__main__":
 
     graph = Graph(n, m, problem, solution)
 
-    neighbors = graph.generate_neighborhood()
-    move = ((1, 8, 2), 1, 6)
+    optimal_time = graph.min_cycle_time()
 
-    print graph.min_cycle_time()
-    print graph.min_cycle_time(move)
-    print graph.lower_bound(move)
+    initial_solution, initial_cycle_time = graph.add_noise_to_solution(5)
 
-    print len(neighbors)
-    min_cycle_times = map(graph.min_cycle_time, neighbors[:26])
-    lower_bounds = map(graph.lower_bound, neighbors[:26])
-    lower_bound_holds = reduce(lambda x, y: x == y,
-                               [min_cycle_times[i] >= lower_bounds[i] for i, _ in enumerate(min_cycle_times)])
-    print lower_bound_holds
+    result, execution_time, cycle_time = graph.search_for_solution(10, cost_function=graph.lower_bound)
 
-    move = neighbors[27]
-    opposite_move = graph.find_opposite_move(move)
-    try:
-        graph.make_a_move(move)
-        graph.make_a_move(opposite_move)
-    except ValueError as inst:
-        print "Making move failed: ", type(inst), inst
-        print '-' * 60
-        traceback.print_exc(file=sys.stdout)
-        print '-' * 60
+
+    print "Solution found is ", float(cycle_time) / optimal_time, " times worse than optimal/best known solution."
+    print "Initial solution was ", float(initial_cycle_time) / cycle_time, " times worse than found solution."
+    print optimal_time, initial_cycle_time, cycle_time
