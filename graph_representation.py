@@ -179,7 +179,7 @@ class Graph(object):
                 if only_one_cycle or cycle == self.m:
                     new_next_m = None
                 elif self.solution[k][0] == i[1:]:
-                    new_prev_m = (cycle + 1,) + self.solution[k][1]
+                    new_next_m = (cycle + 1,) + self.solution[k][1]
                 else:
                     new_next_m = (cycle + 1,) + self.solution[k][0]
 
@@ -224,7 +224,7 @@ class Graph(object):
             for k in [x - 1 for x in self.problem[i[1] - 1][i[2] - 1].keys()]:
                 for s in xrange(len(self.solution[k]) + 1) if k != i[0] else xrange(len(self.solution[k])):
                     move = (i, k, s)
-                    if valid_move(move) and move != self.find_opposite_move(move):
+                    if valid_move(move):
                         moves.append(move)
         return moves
 
@@ -256,68 +256,46 @@ class Graph(object):
             self.topological_order = old_topological_order
 
         return critical_path_len
-
-    # m_from, m_to - skąd zabieramy, gdzie wsadzamy
-    # op - zabierana operacja, para (nr_maszyny, nr_operacji)
-    # pos - pozycja do wsadzenia op na maszynę m_to
+    
     # tutaj numery maszyn idą od 0
-    def lower_bound(self, (i, m_to, pos)):
-        m_from = i[0]
-        op = i[1:]
-
-        def alpha(k, i):
-            assert i >= 0
-            if k != m_from or self.solution[k].index(op) > i:
-                return self.solution[k][i]
-            # print k, i
-            return self.solution[k][i + 1]
-
-        # jeśli longest_path nie istnieje, to powinien zwrócić None
-        # te drogi poniżej są zawarte w H1 (pierwszej składowej G), więc
-        # można by je liczyć trochę szybciej (tylko w H1)
-
-        def R(k, opr):
-            return self.longest_path_length((0,) + alpha(k, 0), (0,) + opr, justH1=True)
-
-        def Q(k, opr):
-            last_op_k_idx = len(self.solution[k]) - 1
-            if k == m_from:
-                last_op_k_idx -= 1
-            return self.longest_path_length((0,) + opr, (0,) + alpha(k, last_op_k_idx), justH1=True)
-
+    def lower_bound(self, move):
+        op = move[0][1:]
+        v_name = (0,) + op
+        
+        op_idx = self.topological_order.index(v_name)
+        del self.topological_order[op_idx]
+        
+        rev_move = self.find_opposite_move(move)
+        self.make_a_move(move)
+        
+        v = self.graph[v_name]
+        
         def LB(l):
-            op_old_weight = self.graph[(0,) + op].weight
-            op_new_weight = self.problem[op[0] - 1][op[1] - 1][m_to + 1]
+            if self.solution[l][0] == op:
+                R1 = None
+                R2 = None
+            else:
+                R1 = self.longest_path_length((0,) + self.solution[l][0], v.prev_mach, justH1=True)
+                R2 = self.longest_path_length((0,) + self.solution[l][0], v.prev_tech, justH1=True)
 
-            R1 = lambda: R(l, alpha(m_to, pos - 1))
+            if self.solution[l][-1] == op:
+                Q1 = None
+                Q2 = None
+            else:
+                Q1 = self.longest_path_length(v.next_mach, (0,) + self.solution[l][-1], justH1=True)
+                Q2 = self.longest_path_length(v.next_tech, (0,) + self.solution[l][-1], justH1=True)
+            
+            maxR = max(R1, R2, 0)
+            maxQ = max(Q1, Q2, 0)
 
-            def R2():
-                r = R(l, op)
-                return r - op_old_weight if r is not None else None
+            return maxR + maxQ + v.weight
 
-            Q1 = lambda: Q(l, alpha(m_to, pos))
-
-            def Q2():
-                q = Q(l, op)
-                return q - op_old_weight if q is not None else None
-
-            # 0 w maxach po to, żeby mieć jakąś liczbę, gdy drogi nie istnieją
-
-            if pos == 0:
-                return max(R2(), 0) + max(Q1(), Q2(), 0) + op_new_weight
-
-            len_m_to = len(self.solution[m_to])
-            if m_to == m_from:
-                len_m_to -= 1
-            if pos == len_m_to:
-                return max(R1(), R2(), 0) + max(Q2(), 0) + op_new_weight
-
-            maxR = max(R1(), R2(), 0)
-            maxQ = max(Q1(), Q2(), 0)
-
-            return maxR + maxQ + op_new_weight
-
-        return max([LB(l) for l in xrange(self.m)])
+        result = max([LB(l) for l in xrange(self.m)])
+        
+        self.make_a_move(rev_move)
+        self.topological_order.insert(op_idx, v_name)
+        
+        return result
     
     def search_for_solution(self, num_iter, cost_function):
         cost_time = 0.
