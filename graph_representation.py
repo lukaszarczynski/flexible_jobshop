@@ -346,9 +346,9 @@ class Graph(object):
 
 
 if __name__ == "__main__":
-    n, m, problem = load_problem("instances/Hurink_edata_abz8.fjs")
+    n, m, problem = load_problem("instances/Hurink_edata_abz9.fjs")
 
-    solution = load_solution("solutions/Hurink_edata_abz8.txt")
+    solution = load_solution("solutions/Hurink_edata_abz9.txt")
 
     graph = Graph(n, m, problem, solution)
 
