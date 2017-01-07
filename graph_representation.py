@@ -306,6 +306,37 @@ class Graph(object):
             return maxR + maxQ + op_new_weight  # a może tu ma być op_new_weight?
 
         return max([LB(l) for l in xrange(len(self.solution))])
+    
+    def search_for_solution(self, num_iter, cost_function):
+        cost_time = 0.
+
+        for i in xrange(num_iter):
+            neighborhood = self.generate_neighborhood()
+
+            t0 = time.time()
+            best_move = min(neighborhood, key=cost_function)
+            cost_time += time.time() - t0
+
+            self.make_a_move(best_move)
+            self.topological_sort()
+
+        return cost_time
+    
+    def get_random_starting_solution(self):
+        task_lens = dict(enumerate(map(len, self.problem)))
+        self.solution = []
+
+        for i in xrange(self.m):
+            self.solution.append([])
+
+        for op_num in xrange(max(task_lens.values())):
+            tasks = [t for t in task_lens.keys() if task_lens[t] > op_num]
+            for t in tasks:
+                rand_machine = random(self.problem[t][op_num].keys())
+                self.solution[rand_machine].append((t+1, op_num+1))
+
+    def add_noise_to_solution(num_iter):
+        self.search_for_solution(num_iter, lambda _: random())
 
 
 if __name__ == "__main__":
