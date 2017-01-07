@@ -332,10 +332,10 @@ class Graph(object):
         for op_num in xrange(max(task_lens.values())):
             tasks = [t for t in task_lens.keys() if task_lens[t] > op_num]
             for t in tasks:
-                rand_machine = random(self.problem[t][op_num].keys())
+                rand_machine = random.choice(self.problem[t][op_num].keys())
                 self.solution[rand_machine].append((t+1, op_num+1))
 
-    def add_noise_to_solution(num_iter):
+    def add_noise_to_solution(self, num_iter):
         self.search_for_solution(num_iter, lambda _: random())
 
 
