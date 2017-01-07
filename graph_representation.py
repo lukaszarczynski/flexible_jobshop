@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 from copy import deepcopy
 from collections import deque
-from random import random
+from random import random, choice
 
 import time
 
@@ -224,7 +224,7 @@ class Graph(object):
             for k in [x - 1 for x in self.problem[i[1] - 1][i[2] - 1].keys()]:
                 for s in xrange(len(self.solution[k]) + 1) if k != i[0] else xrange(len(self.solution[k])):
                     move = (i, k, s)
-                    if valid_move(move):
+                    if valid_move(move) and move != self.find_opposite_move(move):
                         moves.append(move)
         return moves
 
@@ -300,7 +300,7 @@ class Graph(object):
                 q = Q(l, op)
                 return q - op_old_weight if q is not None else None
 
-                # 0 w maxach po to, żeby mieć jakąś liczbę, gdy drogi nie istnieją
+            # 0 w maxach po to, żeby mieć jakąś liczbę, gdy drogi nie istnieją
 
             if pos == 0:
                 return max(R2(), 0) + max(Q1(), Q2(), 0) + op_new_weight
@@ -314,9 +314,9 @@ class Graph(object):
             maxR = max(R1(), R2(), 0)
             maxQ = max(Q1(), Q2(), 0)
 
-            return maxR + maxQ + op_new_weight  # a może tu ma być op_new_weight?
+            return maxR + maxQ + op_new_weight
 
-        return max([LB(l) for l in xrange(len(self.solution))])
+        return max([LB(l) for l in xrange(self.m)])
     
     def search_for_solution(self, num_iter, cost_function):
         cost_time = 0.
@@ -329,28 +329,34 @@ class Graph(object):
             t0 = time.time()
             best_move = min(neighborhood, key=cost_function)
             cost_time += time.time() - t0
+            
+            print best_move
+            print self.find_opposite_move(best_move)
 
             self.make_a_move(best_move)
             self.topological_sort()
         print "found"
 
         return cost_time
-    
-    def get_random_starting_solution(self):
-        task_lens = dict(enumerate(map(len, self.problem)))
-        self.solution = []
-
-        for i in xrange(self.m):
-            self.solution.append([])
-
-        for op_num in xrange(max(task_lens.values())):
-            tasks = [t for t in task_lens.keys() if task_lens[t] > op_num]
-            for t in tasks:
-                rand_machine = random.choice(self.problem[t][op_num].keys())
-                self.solution[rand_machine].append((t+1, op_num+1))
 
     def add_noise_to_solution(self, num_iter):
         self.search_for_solution(num_iter, lambda _: random())
+        
+    
+def get_random_starting_solution(n, m, problem):
+    task_lens = dict(enumerate(map(len, problem)))
+    solution = []
+
+    for i in xrange(m):
+        solution.append([])
+
+    for op_num in xrange(max(task_lens.values())):
+        tasks = [t for t in task_lens.keys() if task_lens[t] > op_num]
+        for t in tasks:
+            rand_machine = choice(problem[t][op_num].keys())
+            solution[rand_machine-1].append((t+1, op_num+1))
+            
+    return solution
 
 
 if __name__ == "__main__":
@@ -371,24 +377,31 @@ if __name__ == "__main__":
     lower_bound = graph.lower_bound(opposite_move)
     print "lower_bound =", lower_bound
 
-    graph.add_noise_to_solution(num_iter=5)
+    #graph.get_random_starting_solution()
+    graph.add_noise_to_solution(num_iter=50)
     initial_cycle_time = graph.min_cycle_time()
     print "initial_cycle_time =", initial_cycle_time
     print "Initial solution is ", float(initial_cycle_time) / optimal_time, " times worse than optimal/best known solution."
 
     initial_cycle_time = graph.min_cycle_time()
+    
+    graph1 = graph
+    graph2 = deepcopy(graph)
 
-    execution_time_lb = graph.search_for_solution(10, cost_function=graph.lower_bound)
+    execution_time_lb = graph1.search_for_solution(10, cost_function=graph1.lower_bound)
 
-    cycle_time_lb = graph.min_cycle_time()
+    cycle_time_lb = graph1.min_cycle_time()
+    print "execution_time_lb =", execution_time_lb
     print "cycle_time_lb =", cycle_time_lb
 
     print "Solution found with lower bound is ", float(cycle_time_lb) / optimal_time, " times worse than optimal/best known solution."
     print "Initial solution was ", float(initial_cycle_time) / cycle_time_lb, " times worse than solution found with lower bound."
 
-    execution_time_lb = graph.search_for_solution(10, cost_function=graph.min_cycle_time)
+    
+    execution_time_prec = graph2.search_for_solution(10, cost_function=graph2.min_cycle_time)
 
-    cycle_time_prec = graph.min_cycle_time()
+    cycle_time_prec = graph2.min_cycle_time()
+    print "execution_time_prec =", execution_time_prec
     print "cycle_time_prec =", cycle_time_prec
 
     print "Solution found is ", float(cycle_time_prec) / optimal_time, " times worse than optimal/best known solution."
