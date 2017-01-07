@@ -229,29 +229,30 @@ class Graph(object):
         return moves
 
     def min_cycle_time(self, move=None):
-        topological_order = None
         if move is not None:
+            old_topological_order = self.topological_order
             reverse_move = self.find_opposite_move(move)
             self.make_a_move(move)
             self.topological_sort()
-            topological_order = self.topological_order
 
-        critical_path_len = 0
+        critical_path_len = 0.
 
         for machine in self.solution:
             vertex = machine[0]
-            for cycle_idx in xrange(1, self.m):
+        #for task in xrange(self.n):
+        #    vertex = (task + 1, 1)
+            for cycle_idx in xrange(1, self.m + 1):
                 longest_path = self.longest_path_length((0,) + vertex, (cycle_idx,) + vertex)
                 if longest_path is None:
                     path_len = float("-inf")
                 else:
-                    path_len = longest_path / cycle_idx
+                    path_len = longest_path / float(cycle_idx)
                 if path_len > critical_path_len:
                     critical_path_len = path_len
 
         if move is not None:
             self.make_a_move(reverse_move)
-            self.topological_order = topological_order
+            self.topological_order = old_topological_order
 
         return critical_path_len
 
@@ -319,8 +320,10 @@ class Graph(object):
     
     def search_for_solution(self, num_iter, cost_function):
         cost_time = 0.
-
+    
+        print "searching..."
         for i in xrange(num_iter):
+            print i
             neighborhood = self.generate_neighborhood()
 
             t0 = time.time()
@@ -329,6 +332,7 @@ class Graph(object):
 
             self.make_a_move(best_move)
             self.topological_sort()
+        print "found"
 
         return cost_time
     
@@ -350,9 +354,9 @@ class Graph(object):
 
 
 if __name__ == "__main__":
-    n, m, problem = load_problem("instances/Hurink_edata_abz9.fjs")
+    n, m, problem = load_problem("instances/Barnes_setb4c9.fjs")
 
-    solution = load_solution("solutions/Hurink_edata_abz9.txt")
+    solution = load_solution("solutions/Barnes_setb4c9.txt")
 
     graph = Graph(n, m, problem, solution)
 
